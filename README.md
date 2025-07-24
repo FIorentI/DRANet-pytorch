@@ -31,7 +31,6 @@ You must input the task(clf or seg), datasets(M, MM, U, G, C), and experiment na
 ```
 python train.py -T [task] -D [datasets] --ex [experiment_name]
 example python train.py -T clf -D M MM --ex M2MM
-python train.py -T clf -D EMNIST DAGECC --ex EMNIST2DAGECC
 ```
 ## Test
 Input the same experiment_name that you trained and specific iteration.
