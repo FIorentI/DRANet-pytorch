@@ -101,7 +101,7 @@ class Generator(nn.Module):
 
 
 class Classifier(nn.Module):
-    def __init__(self, channels=1, num_classes=33, imsize=(28, 28)):
+    def __init__(self, channels=1, num_classes=10, imsize=(28, 28)):
         super(Classifier, self).__init__()
         self.conv = nn.Sequential(
             nn.Conv2d(channels, 32, kernel_size=5, stride=1, padding=2, bias=True),
@@ -252,21 +252,33 @@ class Discriminator_MNIST(nn.Module):
 
 
 class PatchGAN_Discriminator(nn.Module):
-    def __init__(self, channels=3):
+    def __init__(self, channels=3, imsize=(64, 64)):
         super(PatchGAN_Discriminator, self).__init__()
-        self.model = nn.Sequential(
+        self.conv = nn.Sequential(
             spectral_norm(nn.Conv2d(channels, 64, kernel_size=4, stride=2, padding=1, bias=True)),
-            nn.LeakyReLU(negative_slope=0.2, inplace=True),
+            nn.LeakyReLU(0.2, inplace=True),
             spectral_norm(nn.Conv2d(64, 128, kernel_size=4, stride=2, padding=1, bias=True)),
-            nn.LeakyReLU(negative_slope=0.2, inplace=True),
+            nn.LeakyReLU(0.2, inplace=True),
             spectral_norm(nn.Conv2d(128, 256, kernel_size=4, stride=2, padding=1, bias=True)),
-            nn.LeakyReLU(negative_slope=0.2, inplace=True),
+            nn.LeakyReLU(0.2, inplace=True),
             spectral_norm(nn.Conv2d(256, 512, kernel_size=4, stride=2, padding=1, bias=True)),
-            nn.LeakyReLU(negative_slope=0.2, inplace=True),
-            spectral_norm(nn.Conv2d(512, 1, kernel_size=4, stride=2, padding=1, bias=True)),
-            nn.LeakyReLU(negative_slope=0.2, inplace=True),
+            nn.LeakyReLU(0.2, inplace=True),
+        )
+
+        # Dynamically calculate flattened output size
+        with torch.no_grad():
+            dummy_input = torch.randn(1, channels, *imsize)
+            dummy_output = self.conv(dummy_input)
+            self.flattened_size = dummy_output.view(1, -1).shape[1]
+
+        self.fc = nn.Sequential(
+            nn.Linear(self.flattened_size, 1),
+            nn.Sigmoid()
         )
 
     def forward(self, x):
-        return self.model(x)
+        x = self.conv(x)
+        x = x.view(x.size(0), -1)
+        return self.fc(x)
+
 

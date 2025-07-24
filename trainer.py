@@ -159,13 +159,13 @@ class Trainer:
                 if dset == 'U':
                     self.nets['D'][dset] = Discriminator_USPS()
                 else:
-                    self.nets['D'][dset] = Discriminator_MNIST()
+                    self.nets['D'][dset] = Discriminator_MNIST(imsize=self.imsize)
             else:
-                self.nets['D'][dset] = PatchGAN_Discriminator()
+                self.nets['D'][dset] = PatchGAN_Discriminator(imsize=self.imsize)
         self.nets['T'] = dict()
         for cv in self.test_converts:
             if self.args.task == 'clf':
-                self.nets['T'][cv] = Classifier(num_classes=self.num_class)
+                self.nets['T'][cv] = Classifier(num_classes=self.num_class, imsize=self.imsize)
             elif self.args.task == 'seg':
                 self.nets['T'][cv] = drn26()
                 # self.nets['T'][cv] = GTA5_drn26()

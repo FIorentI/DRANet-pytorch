@@ -63,7 +63,7 @@ def get_args():
             args.batch = 2
     if args.imsize is None:
         if args.task == 'clf':
-            args.imsize = 28
+            args.imsize = 64
         elif args.task == 'seg':
             args.imsize = 512
     if args.monitor_freq is None:
