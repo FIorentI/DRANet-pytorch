@@ -1,8 +1,0 @@
-{"time":"2025-07-24T11:19:47.776828+02:00","level":"INFO","msg":"stream: starting","core version":"0.19.10","symlink path":"/Users/floimb/Documents/Git/DRANet-pytorch/wandb/run-20250724_111947-pq6bnrfq/logs/debug-core.log"}
-{"time":"2025-07-24T11:19:47.796815+02:00","level":"ERROR","msg":"monitor: failed to initialize GPU asset: monitor: could not start GPU binary: fork/exec /opt/anaconda3/envs/DAGECC/lib/python3.11/site-packages/wandb/bin/gpu_stats: bad CPU type in executable"}
-{"time":"2025-07-24T11:19:47.992487+02:00","level":"INFO","msg":"created new stream","id":"pq6bnrfq"}
-{"time":"2025-07-24T11:19:47.99254+02:00","level":"INFO","msg":"stream: started","id":"pq6bnrfq"}
-{"time":"2025-07-24T11:19:47.99256+02:00","level":"INFO","msg":"writer: Do: started","stream_id":"pq6bnrfq"}
-{"time":"2025-07-24T11:19:47.992838+02:00","level":"INFO","msg":"sender: started","stream_id":"pq6bnrfq"}
-{"time":"2025-07-24T11:19:47.992865+02:00","level":"INFO","msg":"handler: started","stream_id":"pq6bnrfq"}
-{"time":"2025-07-24T11:19:48.29954+02:00","level":"INFO","msg":"Starting system monitor"}
