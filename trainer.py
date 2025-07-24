@@ -152,7 +152,7 @@ class Trainer:
     def set_networks(self):
         self.nets['E'] = Encoder()
         self.nets['G'] = Generator()
-        self.nets['S'] = Separator(self.training_converts)
+        self.nets['S'] = Separator(self.imsize, self.training_converts)
         self.nets['D'] = dict()
         for dset in self.args.datasets:
             if self.args.task == 'clf':

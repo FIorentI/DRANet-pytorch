@@ -2,9 +2,13 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torchvision import models
-import functools
+import numpy as np
+from torch.autograd import Variable
 from torch.nn.utils import spectral_norm
 from .batchinstancenorm import BatchInstanceNorm2d as Normlayer
+import functools
+from functools import partial
+import torchvision.transforms as ttransforms
 
 
 class ResidualBlock(nn.Module):
@@ -46,11 +50,12 @@ class Encoder(nn.Module):
         )
 
     def forward(self, x):
-        return self.model(x)
+        output = self.model(x)
+        return output
 
 
 class Separator(nn.Module):
-    def __init__(self, converts, ch=64):
+    def __init__(self, imsize, converts, ch=64, down_scale=2):
         super(Separator, self).__init__()
         self.conv = nn.Sequential(
             spectral_norm(nn.Conv2d(ch, ch, kernel_size=3, stride=1, padding=1, bias=True)),
@@ -59,41 +64,28 @@ class Separator(nn.Module):
             nn.ReLU(True),
         )
         self.w = nn.ParameterDict()
-        self.ch = ch
-        self.converts = converts  # Store for possible use later
+        w, h = imsize
+        for cv in converts:
+            self.w[cv] = nn.Parameter(torch.ones(1, ch, h//down_scale, w//down_scale), requires_grad=True)
 
     def forward(self, features, converts=None):
         contents, styles = dict(), dict()
-
-        # Separate style/content
         for key in features.keys():
-            styles[key] = self.conv(features[key])         # Style
-            contents[key] = features[key] - styles[key]    # Content
-            if '2' in key:
+            styles[key] = self.conv(features[key])  # equals to F - wS(F) see eq.(2)
+            contents[key] = features[key] - styles[key]  # equals to wS(F)
+            if '2' in key:  # for 3 datasets: source-mid-target
                 source, target = key.split('2')
                 contents[target] = contents[key]
 
-        # Lazy init and apply conversion
-        if converts is not None:
+        if converts is not None:  # separate features of converted images to compute consistency loss.
             for cv in converts:
                 source, target = cv.split('2')
-
-                # Check if parameter exists
-                if cv not in self.w:
-                    feat_shape = contents[source].shape  # [B, C, H, W]
-                    self.w[cv] = nn.Parameter(
-                        torch.ones(1, self.ch, feat_shape[2], feat_shape[3], device=contents[source].device),
-                        requires_grad=True
-                    )
-
                 contents[cv] = self.w[cv] * contents[source]
-
         return contents, styles
 
 
-
 class Generator(nn.Module):
-    def __init__(self):
+    def __init__(self, channels=512):
         super(Generator, self).__init__()
         self.model = nn.Sequential(
             spectral_norm(nn.ConvTranspose2d(64, 32, kernel_size=3, stride=1, padding=1, bias=True)),
@@ -105,23 +97,29 @@ class Generator(nn.Module):
         )
 
     def forward(self, content, style):
-        return self.model(content + style)
+        return self.model(content+style)
 
 
 class Classifier(nn.Module):
-    def __init__(self, channels=1, num_classes=10):
+    def __init__(self, channels=1, num_classes=33, imsize=(28, 28)):
         super(Classifier, self).__init__()
         self.conv = nn.Sequential(
             nn.Conv2d(channels, 32, kernel_size=5, stride=1, padding=2, bias=True),
             nn.ReLU(True),
-            nn.MaxPool2d(kernel_size=2, stride=2),
+            nn.MaxPool2d(kernel_size=2, stride=2, padding=0),
             nn.Conv2d(32, 48, kernel_size=5, stride=1, padding=2),
             nn.ReLU(True),
-            nn.MaxPool2d(kernel_size=2, stride=2),
+            nn.MaxPool2d(kernel_size=2, stride=2, padding=0),
         )
-        self.pool = nn.AdaptiveAvgPool2d((1, 1))
+
+        # Dynamically determine FC input size based on imsize
+        with torch.no_grad():
+            dummy_input = torch.randn(1, channels, *imsize)
+            dummy_output = self.conv(dummy_input)
+            flattened_size = dummy_output.view(1, -1).shape[1]
+
         self.fc = nn.Sequential(
-            nn.Linear(48, 100),
+            nn.Linear(flattened_size, 100),
             nn.ReLU(True),
             nn.Linear(100, 100),
             nn.ReLU(True),
@@ -129,28 +127,48 @@ class Classifier(nn.Module):
         )
 
     def forward(self, x):
-        x = self.conv(x)
-        x = self.pool(x)
-        x = x.view(x.size(0), -1)
-        return self.fc(x)
+        output = self.conv(x)
+        output = output.view(output.size(0), -1)
+        output = self.fc(output)
+        return output
+
 
 
 class VGG19(nn.Module):
     def __init__(self):
         super(VGG19, self).__init__()
         features = models.vgg19(pretrained=True).features
+
+        # Modify first conv layer to accept 1 channel instead of 3
         old_conv = features[0]
-        new_conv = nn.Conv2d(1, old_conv.out_channels, kernel_size=old_conv.kernel_size, stride=old_conv.stride, padding=old_conv.padding)
+        new_conv = nn.Conv2d(1, old_conv.out_channels,
+                             kernel_size=old_conv.kernel_size,
+                             stride=old_conv.stride,
+                             padding=old_conv.padding)
+
+        # Initialize new_conv weights by averaging old weights across RGB channels
         with torch.no_grad():
             new_conv.weight[:] = old_conv.weight.mean(dim=1, keepdim=True)
             new_conv.bias[:] = old_conv.bias
+
         features[0] = new_conv
 
-        self.to_relu_1_1 = nn.Sequential(*features[:2])
-        self.to_relu_2_1 = nn.Sequential(*features[2:7])
-        self.to_relu_3_1 = nn.Sequential(*features[7:12])
-        self.to_relu_4_1 = nn.Sequential(*features[12:21])
-        self.to_relu_4_2 = nn.Sequential(*features[21:25])
+        self.to_relu_1_1 = nn.Sequential()
+        self.to_relu_2_1 = nn.Sequential()
+        self.to_relu_3_1 = nn.Sequential()
+        self.to_relu_4_1 = nn.Sequential()
+        self.to_relu_4_2 = nn.Sequential()
+
+        for x in range(2):
+            self.to_relu_1_1.add_module(str(x), features[x])
+        for x in range(2, 7):
+            self.to_relu_2_1.add_module(str(x), features[x])
+        for x in range(7, 12):
+            self.to_relu_3_1.add_module(str(x), features[x])
+        for x in range(12, 21):
+            self.to_relu_4_1.add_module(str(x), features[x])
+        for x in range(21, 25):
+            self.to_relu_4_2.add_module(str(x), features[x])
 
         for param in self.parameters():
             param.requires_grad = False
@@ -166,82 +184,89 @@ class VGG19(nn.Module):
         h_relu_4_1 = h
         h = self.to_relu_4_2(h)
         h_relu_4_2 = h
-        return (h_relu_1_1, h_relu_2_1, h_relu_3_1, h_relu_4_1, h_relu_4_2)
-
+        out = (h_relu_1_1, h_relu_2_1, h_relu_3_1, h_relu_4_1, h_relu_4_2)
+        return out
 
 class Discriminator_USPS(nn.Module):
     def __init__(self, channels=1):
         super(Discriminator_USPS, self).__init__()
         self.conv = nn.Sequential(
-            spectral_norm(nn.Conv2d(channels, 32, kernel_size=4, stride=2, padding=1)),
+            spectral_norm(nn.Conv2d(channels, 32, kernel_size=4, stride=2, padding=1, bias=True)),
             nn.ReLU(True),
-            spectral_norm(nn.Conv2d(32, 64, kernel_size=4, stride=2, padding=1)),
+            spectral_norm(nn.Conv2d(32, 64, kernel_size=4, stride=2, padding=1, bias=True)),
             nn.ReLU(True),
-            spectral_norm(nn.Conv2d(64, 128, kernel_size=4, stride=2, padding=1)),
+            spectral_norm(nn.Conv2d(64, 128, kernel_size=4, stride=2, padding=1, bias=True)),
             nn.ReLU(True),
-            spectral_norm(nn.Conv2d(128, 256, kernel_size=4, stride=2, padding=1)),
+            spectral_norm(nn.Conv2d(128, 256, kernel_size=4, stride=2, padding=1, bias=True)),
             nn.ReLU(True)
         )
-        self.pool = nn.AdaptiveAvgPool2d((1, 1))
         self.fc = nn.Sequential(
-            nn.Linear(256, 1),
+            nn.Linear(2304, 1),
             nn.Sigmoid()
         )
 
     def forward(self, x):
-        x = self.conv(x)
-        x = self.pool(x)
-        x = x.view(x.size(0), -1)
-        return self.fc(x)
+        output = self.conv(x)
+        output = output.view(output.size(0), -1)
+        output = self.fc(output)
+        return output
 
 
 class Discriminator_MNIST(nn.Module):
-    def __init__(self, channels=1):
+    def __init__(self, channels=1, imsize=(28, 28)):
         super(Discriminator_MNIST, self).__init__()
         self.conv = nn.Sequential(
-            spectral_norm(nn.Conv2d(channels, 32, kernel_size=4, stride=2, padding=1)),
+            spectral_norm(nn.Conv2d(channels, 32, kernel_size=4, stride=2, padding=1, bias=True)),
             nn.ReLU(True),
-            spectral_norm(nn.Conv2d(32, 32, kernel_size=3, stride=1, padding=1)),
+            spectral_norm(nn.Conv2d(32, 32, kernel_size=3, stride=1, padding=1, bias=True)),
             nn.ReLU(True),
-            spectral_norm(nn.Conv2d(32, 64, kernel_size=4, stride=2, padding=1)),
+            spectral_norm(nn.Conv2d(32, 64, kernel_size=4, stride=2, padding=1, bias=True)),
             nn.ReLU(True),
-            spectral_norm(nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1)),
+            spectral_norm(nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1, bias=True)),
             nn.ReLU(True),
-            spectral_norm(nn.Conv2d(64, 128, kernel_size=4, stride=2, padding=1)),
+            spectral_norm(nn.Conv2d(64, 128, kernel_size=4, stride=2, padding=1, bias=True)),
             nn.ReLU(True),
-            spectral_norm(nn.Conv2d(128, 128, kernel_size=3, stride=1, padding=1)),
+            spectral_norm(nn.Conv2d(128, 128, kernel_size=3, stride=1, padding=1, bias=True)),
             nn.ReLU(True),
-            spectral_norm(nn.Conv2d(128, 256, kernel_size=4, stride=2, padding=1)),
+            spectral_norm(nn.Conv2d(128, 256, kernel_size=4, stride=2, padding=1, bias=True)),
             nn.ReLU(True)
         )
-        self.pool = nn.AdaptiveAvgPool2d((1, 1))
+
+        # Dynamically determine the flattened output size
+        with torch.no_grad():
+            dummy_input = torch.randn(1, channels, *imsize)
+            dummy_output = self.conv(dummy_input)
+            self.flattened_size = dummy_output.view(1, -1).shape[1]
+
         self.fc = nn.Sequential(
-            nn.Linear(256, 1),
+            nn.Linear(self.flattened_size, 1),
             nn.Sigmoid()
         )
 
     def forward(self, x):
-        x = self.conv(x)
-        x = self.pool(x)
-        x = x.view(x.size(0), -1)
-        return self.fc(x)
+        output = self.conv(x)
+        output = output.view(output.size(0), -1)
+        output = self.fc(output)
+        return output
+
 
 
 class PatchGAN_Discriminator(nn.Module):
     def __init__(self, channels=3):
         super(PatchGAN_Discriminator, self).__init__()
         self.model = nn.Sequential(
-            spectral_norm(nn.Conv2d(channels, 64, kernel_size=4, stride=2, padding=1)),
-            nn.LeakyReLU(0.2, inplace=True),
-            spectral_norm(nn.Conv2d(64, 128, kernel_size=4, stride=2, padding=1)),
-            nn.LeakyReLU(0.2, inplace=True),
-            spectral_norm(nn.Conv2d(128, 256, kernel_size=4, stride=2, padding=1)),
-            nn.LeakyReLU(0.2, inplace=True),
-            spectral_norm(nn.Conv2d(256, 512, kernel_size=4, stride=2, padding=1)),
-            nn.LeakyReLU(0.2, inplace=True),
-            spectral_norm(nn.Conv2d(512, 1, kernel_size=4, stride=2, padding=1)),
-            nn.LeakyReLU(0.2, inplace=True)
+            spectral_norm(nn.Conv2d(channels, 64, kernel_size=4, stride=2, padding=1, bias=True)),
+            nn.LeakyReLU(negative_slope=0.2, inplace=True),
+            spectral_norm(nn.Conv2d(64, 128, kernel_size=4, stride=2, padding=1, bias=True)),
+            nn.LeakyReLU(negative_slope=0.2, inplace=True),
+            spectral_norm(nn.Conv2d(128, 256, kernel_size=4, stride=2, padding=1, bias=True)),
+            nn.LeakyReLU(negative_slope=0.2, inplace=True),
+            spectral_norm(nn.Conv2d(256, 512, kernel_size=4, stride=2, padding=1, bias=True)),
+            nn.LeakyReLU(negative_slope=0.2, inplace=True),
+            spectral_norm(nn.Conv2d(512, 1, kernel_size=4, stride=2, padding=1, bias=True)),
+            nn.LeakyReLU(negative_slope=0.2, inplace=True),
         )
 
     def forward(self, x):
         return self.model(x)
+

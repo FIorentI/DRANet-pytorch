@@ -1,0 +1,14 @@
+{'style': {'M2MM': 50000.0, 'MM2M': 10000.0}, 'dis': {'M': 0.5, 'MM': 0.5}, 'gen': {'M': 0.5, 'MM': 1.0}, 'recon': 5, 'consis': 1, 'content': 1}
+{'style': {'M2MM': 50000.0, 'MM2M': 10000.0}, 'dis': {'M': 0.5, 'MM': 0.5}, 'gen': {'M': 0.5, 'MM': 1.0}, 'recon': 5, 'consis': 1, 'content': 1}
+{'style': {'M2MM': 50000.0, 'MM2M': 10000.0}, 'dis': {'M': 0.5, 'MM': 0.5}, 'gen': {'M': 0.5, 'MM': 1.0}, 'recon': 5, 'consis': 1, 'content': 1}
+[1/10000000] D: 1.39|G: 1.04|Recon: 6.88|Consis: 2.00|Content: 13.01|Style: 22.11|T: 9.32|| M2MM: 0.00|MM2M: 0.00| M2MM
+[2/10000000] D: 1.35|G: 1.54|Recon: 6.16|Consis: 1.85|Content: 12.01|Style: 16.90|T: 9.41|| M2MM: 0.00|MM2M: 0.00| M2MM
+[3/10000000] D: 1.30|G: 1.07|Recon: 5.24|Consis: 1.67|Content: 10.15|Style: 15.87|T: 9.34|| M2MM: 0.00|MM2M: 0.00| M2MM
+[4/10000000] D: 1.36|G: 1.09|Recon: 4.46|Consis: 1.48|Content: 7.20|Style: 14.54|T: 9.41|| M2MM: 0.00|MM2M: 0.00| M2MM
+[5/10000000] D: 1.36|G: 1.38|Recon: 4.23|Consis: 1.35|Content: 5.42|Style: 14.50|T: 9.26|| M2MM: 0.00|MM2M: 0.00| M2MM
+[6/10000000] D: 1.30|G: 3.38|Recon: 3.84|Consis: 1.26|Content: 5.47|Style: 14.03|T: 9.22|| M2MM: 0.00|MM2M: 0.00| M2MM
+[7/10000000] D: 1.72|G: 0.99|Recon: 3.81|Consis: 1.17|Content: 4.46|Style: 12.76|T: 9.27|| M2MM: 0.00|MM2M: 0.00| M2MM
+[8/10000000] D: 1.39|G: 1.01|Recon: 3.68|Consis: 1.11|Content: 4.09|Style: 11.71|T: 9.18|| M2MM: 0.00|MM2M: 0.00| M2MM
+[9/10000000] D: 1.38|G: 1.01|Recon: 3.18|Consis: 1.03|Content: 3.59|Style: 12.81|T: 9.27|| M2MM: 0.00|MM2M: 0.00| M2MM
+[10/10000000] D: 1.37|G: 1.02|Recon: 3.33|Consis: 0.99|Content: 3.88|Style: 12.58|T: 9.24|| M2MM: 0.00|MM2M: 0.00| M2MM
+[11/10000000] D: 1.37|G: 1.01|Recon: 3.41|Consis: 0.98|Content: 3.96|Style: 13.82|T: 9.27|| M2MM: 0.00|MM2M: 0.00| M2MM

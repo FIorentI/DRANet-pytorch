@@ -1,0 +1,16 @@
+{"time":"2025-07-24T10:19:25.838357+02:00","level":"INFO","msg":"stream: starting","core version":"0.19.10","symlink path":"/Users/floimb/Documents/Git/DRANet-pytorch/wandb/run-20250724_101925-y0g3p2t7/logs/debug-core.log"}
+{"time":"2025-07-24T10:19:25.856789+02:00","level":"ERROR","msg":"monitor: failed to initialize GPU asset: monitor: could not start GPU binary: fork/exec /opt/anaconda3/envs/DAGECC/lib/python3.11/site-packages/wandb/bin/gpu_stats: bad CPU type in executable"}
+{"time":"2025-07-24T10:19:26.037785+02:00","level":"INFO","msg":"created new stream","id":"y0g3p2t7"}
+{"time":"2025-07-24T10:19:26.037852+02:00","level":"INFO","msg":"stream: started","id":"y0g3p2t7"}
+{"time":"2025-07-24T10:19:26.037929+02:00","level":"INFO","msg":"writer: Do: started","stream_id":"y0g3p2t7"}
+{"time":"2025-07-24T10:19:26.038177+02:00","level":"INFO","msg":"handler: started","stream_id":"y0g3p2t7"}
+{"time":"2025-07-24T10:19:26.038491+02:00","level":"INFO","msg":"sender: started","stream_id":"y0g3p2t7"}
+{"time":"2025-07-24T10:19:26.288072+02:00","level":"INFO","msg":"Starting system monitor"}
+{"time":"2025-07-24T10:19:35.836786+02:00","level":"INFO","msg":"stream: closing","id":"y0g3p2t7"}
+{"time":"2025-07-24T10:19:35.836825+02:00","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2025-07-24T10:19:35.836887+02:00","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2025-07-24T10:19:36.548682+02:00","level":"INFO","msg":"fileTransfer: Close: file transfer manager closed"}
+{"time":"2025-07-24T10:19:36.853685+02:00","level":"INFO","msg":"handler: closed","stream_id":"y0g3p2t7"}
+{"time":"2025-07-24T10:19:36.853896+02:00","level":"INFO","msg":"writer: Close: closed","stream_id":"y0g3p2t7"}
+{"time":"2025-07-24T10:19:36.854326+02:00","level":"INFO","msg":"sender: closed","stream_id":"y0g3p2t7"}
+{"time":"2025-07-24T10:19:36.854421+02:00","level":"INFO","msg":"stream: closed","id":"y0g3p2t7"}
