@@ -9,6 +9,8 @@ python 3.8.10
 numpy 1.21.0
 scipy 1.7.1
 prettytable
+tensorboard
+wandb
 ```
 ## Data 
 Download [MNIST-M]
